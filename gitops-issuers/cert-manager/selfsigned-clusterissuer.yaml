@@ -1,0 +1,11 @@
+# Self-signed for now. Real DNS-01 is possible - the team's Route 53 zone
+# (25c-team1.art) was fixed and confirmed delegated - but it needs lab-infra
+# Terraform (a delegated subdomain, an IRSA role) that isn't worth the setup
+# yet. Self-signed is enough to learn TLS termination, SNI routing and mTLS
+# in the mesh.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: lab-selfsigned-issuer
+spec:
+  selfSigned: {}

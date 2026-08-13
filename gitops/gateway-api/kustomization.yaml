@@ -1,0 +1,12 @@
+# gitops/gateway-api
+#
+# Gateway API standard-channel CRDs, vendored (not fetched live) so the
+# reconcile has no external dependency and the version is pinned by commit,
+# not by a tag that could theoretically move.
+#
+# Absent from the cluster as of 2026-08-13 - confirmed with
+# `kubectl get crd | grep -i gateway` before writing this.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - crds-v1.6.1.yaml

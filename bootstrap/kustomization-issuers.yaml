@@ -1,0 +1,24 @@
+---
+# Second Kustomization: reconciles ./gitops-issuers, kept separate from
+# ./gitops (see the comment in kustomization.yaml) because a ClusterIssuer
+# needs cert-manager's CRDs to actually exist, not just the HelmRelease
+# object to have been created.
+#
+# dependsOn + lab-tools's healthChecks together are what make this actually
+# wait for the real install, not just the Kustomization apply step.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: lab-tools-issuers
+  namespace: flux-system
+spec:
+  interval: 5m0s
+  path: ./gitops-issuers
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: lab-tools
+  dependsOn:
+    - name: lab-tools
+  wait: true
+  timeout: 3m0s

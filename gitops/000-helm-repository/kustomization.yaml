@@ -1,0 +1,9 @@
+# gitops/000-helm-repository
+#
+# Numeric prefix on the directory ensures these sources reconcile before the
+# HelmReleases that consume them, same convention as the team's gitops-flux.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - jetstack.yaml
+  - prometheus-community.yaml

@@ -1,0 +1,10 @@
+# gitops/cert-manager
+#
+# Collides on paper with the team's own cert-manager (gitops-flux#14, open,
+# not installed yet - see repo README). Two full cert-manager controllers
+# both watching every ClusterIssuer/Certificate cluster-wide is a real
+# conflict, not a theoretical one. Tear this down the day #14 lands.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - helmrelease.yaml
