@@ -1,0 +1,76 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "88.3.0"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  interval: 1h0m0s
+  targetNamespace: lab-observability
+  # Pinned for the same reason as cert-manager's HelmRelease - keeps
+  # generated object names (e.g. the Grafana Secret referenced below)
+  # predictable rather than <targetNamespace>-<name>.
+  releaseName: kube-prometheus-stack
+  install:
+    createNamespace: true
+  values:
+    # Alertmanager and kube-state-metrics add real cost (kube-state-metrics
+    # alone is ~128Mi) for no benefit in this course - the exercises are
+    # about watching live traffic, not alerting.
+    alertmanager:
+      enabled: false
+    kubeStateMetrics:
+      enabled: false
+    # Cheap (~few Mi per node) and useful during the load-test exercise.
+    nodeExporter:
+      enabled: true
+    prometheusOperator:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 256Mi
+    prometheus:
+      prometheusSpec:
+        # Default is 10d, sized for a real deployment. This is a lab.
+        retention: 6h
+        # Defaults (true) mean Prometheus only scrapes ServiceMonitors/
+        # PodMonitors carrying the release's own label, in this namespace.
+        # false so it picks up istiod's ServiceMonitor in Phase 2 without
+        # needing that object relabeled to match.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        resources:
+          requests:
+            cpu: 100m
+            memory: 1Gi
+          limits:
+            memory: 1536Mi
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: ebs-csi-default-sc
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 5Gi
+    grafana:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 256Mi
+      defaultDashboardsEnabled: true
+      # No adminPassword set - chart generates a random one into a Secret.
+      # Retrieve with:
+      #   kubectl -n lab-observability get secret kube-prometheus-stack-grafana \
+      #     -o jsonpath='{.data.admin-password}' | base64 -d

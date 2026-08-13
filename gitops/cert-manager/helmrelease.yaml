@@ -14,6 +14,11 @@ spec:
         namespace: flux-system
   interval: 1h0m0s
   targetNamespace: lab-cert-manager
+  # Without this, Flux composes the Helm release name as
+  # <targetNamespace>-<name> ("lab-cert-manager-cert-manager"), which then
+  # flows into every object name the chart generates. Pinning it keeps
+  # object names predictable for anything that references them later.
+  releaseName: cert-manager
   install:
     createNamespace: true
   values:
