@@ -1,0 +1,14 @@
+---
+# GitRepository: points the cluster's existing Flux at this repo. Named
+# "lab-tools" (not "flux-system") so it sits alongside the team's own
+# GitRepository/Kustomization objects without colliding with them.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: lab-tools
+  namespace: flux-system
+spec:
+  interval: 1m0s # fast - this is a lab repo, iterate quickly
+  ref:
+    branch: main
+  url: https://github.com/kadze/lab-tools.git
