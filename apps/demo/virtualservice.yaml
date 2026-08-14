@@ -1,5 +1,12 @@
-# Exercise 2, step 2 of 3: 50/50. Step 1 (90/10) confirmed via 100 real
-# requests: 92/8, matching the configured weight closely.
+# Exercise 2, step 3 of 3: full cutover to v2. Step 2 (50/50) confirmed via
+# 100 real requests: 54/46, matching the configured weight closely.
+#
+# Single destination, not two entries at 0/100 - this is what a completed
+# migration actually looks like once v1 is fully retired, not a canary
+# still holding a rollback path open. v1's Deployment is untouched and
+# still running (2/2 pods) - nothing routes to it anymore, but it is one
+# VirtualService edit away from getting traffic again if this needed to be
+# reverted.
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -12,9 +19,4 @@ spec:
     - route:
         - destination:
             host: helloworld.lab-demo.svc.cluster.local
-            subset: v1
-          weight: 50
-        - destination:
-            host: helloworld.lab-demo.svc.cluster.local
             subset: v2
-          weight: 50
