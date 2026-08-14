@@ -1,0 +1,24 @@
+# Istio's official helloworld sample (istio/istio samples/helloworld) - the
+# canonical reference app for exactly these exercises: traffic splitting,
+# fault injection, circuit breaking, mTLS, AuthorizationPolicy all have
+# well-documented expected behavior against this app, so a course exercise
+# that doesn't match what's expected is a real signal something's wrong,
+# not just "a bespoke app behaving differently."
+#
+# One Service selecting both versions - VirtualService/DestinationRule
+# subset routing (v1 vs v2) happens at the Envoy layer, not by having
+# separate Services per version.
+apiVersion: v1
+kind: Service
+metadata:
+  name: helloworld
+  namespace: lab-demo
+  labels:
+    app: helloworld
+    service: helloworld
+spec:
+  ports:
+    - port: 5000
+      name: http
+  selector:
+    app: helloworld

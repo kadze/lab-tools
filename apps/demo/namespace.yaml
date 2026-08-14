@@ -1,0 +1,11 @@
+# lab-* namespace, never platform-* - @monitoring owns platform-monitoring
+# and similar, this stays clearly mine and deletes cleanly.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-demo
+  labels:
+    # Opt-in injection, explicit revision - see gitops-flux's README
+    # ("Working with Istio"). istio-injection=enabled would silently do
+    # nothing here.
+    istio.io/rev: "1-30-3"

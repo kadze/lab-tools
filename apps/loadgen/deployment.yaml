@@ -1,0 +1,36 @@
+# Runs `fortio server` as the main process (keeps the pod alive, exposes a
+# small web UI on 8080), but the actual point is exec-ing ad-hoc commands
+# into it: `fortio curl` for one-off requests, `fortio load` for exercise
+# 8's sustained-RPS load test. One tool covers both the "sleep"-equivalent
+# interactive client Istio's own tutorials use and the load generator this
+# course needs later.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fortio
+  namespace: lab-loadgen
+  labels:
+    app: fortio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fortio
+  template:
+    metadata:
+      labels:
+        app: fortio
+    spec:
+      containers:
+        - name: fortio
+          image: fortio/fortio
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 192Mi
+          ports:
+            - containerPort: 8080
+              name: http-ui

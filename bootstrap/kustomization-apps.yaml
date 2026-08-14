@@ -1,0 +1,22 @@
+---
+# Third Kustomization: reconciles ./apps - the Phase 3 course workloads.
+# No dependsOn needed, unlike lab-tools-issuers: these are plain
+# Namespace/Service/Deployment manifests with no CRD or admission-webhook
+# ordering problem. Sidecar injection is handled by istiod's own
+# already-running MutatingWebhookConfiguration (gitops-flux, Phase 2) via
+# the istio.io/rev label on each namespace - nothing in this repo needs to
+# wait for that, it's a property of the team's cluster already being up.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: lab-tools-apps
+  namespace: flux-system
+spec:
+  interval: 5m0s
+  path: ./apps
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: lab-tools
+  wait: true
+  timeout: 3m0s

@@ -1,0 +1,8 @@
+# lab-tools/apps/demo
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - service.yaml
+  - deployment-v1.yaml
+  - deployment-v2.yaml
