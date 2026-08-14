@@ -6,3 +6,5 @@ resources:
   - service.yaml
   - deployment-v1.yaml
   - deployment-v2.yaml
+  - destinationrule.yaml
+  - virtualservice.yaml

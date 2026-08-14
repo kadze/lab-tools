@@ -1,0 +1,20 @@
+# Defines what "v1" and "v2" mean as routable subsets - keyed off the
+# `version` label already on helloworld-v1/v2's pods (apps/demo's own
+# Deployments). VirtualServices reference these subset names, not raw
+# label selectors, so the routing config and the workload labels stay
+# decoupled - the whole point of the split between DestinationRule and
+# VirtualService.
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: helloworld
+  namespace: lab-demo
+spec:
+  host: helloworld.lab-demo.svc.cluster.local
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2

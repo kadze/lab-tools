@@ -1,0 +1,21 @@
+# Exercise 2, step 1 of 3: 90/10. Watch this in Kiali (or repeat the fortio
+# load command) before moving to 50/50 - the point is seeing the weight
+# actually take effect, not just declaring it.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: helloworld
+  namespace: lab-demo
+spec:
+  hosts:
+    - helloworld.lab-demo.svc.cluster.local
+  http:
+    - route:
+        - destination:
+            host: helloworld.lab-demo.svc.cluster.local
+            subset: v1
+          weight: 90
+        - destination:
+            host: helloworld.lab-demo.svc.cluster.local
+            subset: v2
+          weight: 10
