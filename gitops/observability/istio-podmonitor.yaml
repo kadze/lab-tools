@@ -1,0 +1,35 @@
+# Without this, Prometheus never scrapes a single Istio metric - confirmed
+# empty Kiali graph despite real, successful traffic through the mesh
+# (fortio -> helloworld, 100/100 requests 200 OK). kube-prometheus-stack
+# ships ServiceMonitors for the usual cluster components (apiserver,
+# coredns, kubelet, ...) but nothing for Istio - that has to be added
+# separately, it is not automatic just because
+# serviceMonitorSelectorNilUsesHelmValues/podMonitorSelectorNilUsesHelmValues
+# are set to false in observability/helmrelease.yaml (those only relax
+# which *existing* SM/PM objects get picked up, not create new ones).
+#
+# Targets every mesh-injected pod, any namespace: istiod's sidecar injector
+# labels injected pods security.istio.io/tlsMode=istio automatically, which
+# is a precise, positive selector - no risk of wasted/failed scrapes against
+# unrelated pods the way a "match everything except X" selector would risk.
+#
+# Port 15090, path /stats/prometheus - confirmed by exec-ing into a running
+# helloworld pod's istio-proxy container and checking `ss -tln` /
+# curling the endpoint directly before writing this, not assumed from docs.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istio-envoy-stats
+  namespace: lab-observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      security.istio.io/tlsMode: istio
+  podMetricsEndpoints:
+    - path: /stats/prometheus
+      targetPort: 15090
+      interval: 15s
