@@ -8,14 +8,12 @@
 # prune: true is what makes `kubectl delete -f bootstrap/` a real teardown:
 # deleting these two objects removes every object Flux created from them.
 #
-# healthChecks matter here specifically because ./gitops contains
-# HelmReleases. wait:true + Flux's built-in health checks only cover native
-# workload kinds (Deployment, DaemonSet, ...) automatically - a HelmRelease
-# is not one, so without an explicit entry this Kustomization reports Ready
-# the instant the HelmRelease *object* is created, regardless of whether
-# helm-controller has actually finished installing the chart. That gap is
-# exactly what breaks lab-tools-issuers below if left unfixed: its
-# ClusterIssuer would race cert-manager's CRDs.
+# No healthChecks currently needed: nothing under ./gitops has a downstream
+# consumer in ./gitops-issuers waiting on its Helm install to actually
+# finish (not just the HelmRelease object existing) - that was cert-manager
+# before it moved to the team's own install (gitops-flux#14). Re-add a
+# healthCheck entry here if a future component in gitops-issuers/ needs the
+# same ordering guarantee.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -30,8 +28,3 @@ spec:
     name: lab-tools
   wait: true
   timeout: 5m0s
-  healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: cert-manager
-      namespace: flux-system
