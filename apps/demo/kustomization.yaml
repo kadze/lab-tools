@@ -8,3 +8,4 @@ resources:
   - deployment-v2.yaml
   - destinationrule.yaml
   - virtualservice.yaml
+  - peerauthentication.yaml

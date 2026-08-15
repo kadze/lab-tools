@@ -1,0 +1,28 @@
+# Exercise 6, step 1 of 2: PERMISSIVE, explicit. This matches Istio's
+# implicit default when no PeerAuthentication exists at all - already
+# confirmed indirectly back in exercise 1, where istio_requests_total
+# showed connection_security_policy: mutual_tls for mesh-to-mesh traffic
+# even with zero PeerAuthentication objects anywhere. PERMISSIVE means
+# mTLS is used between meshed pods, but plaintext is still ACCEPTED too -
+# a compatibility mode for gradual rollout, not real enforcement.
+#
+# `name: default`, no selector - this is Istio's specific convention for a
+# namespace-wide policy covering every workload in lab-demo. Scoped to
+# this namespace only, not mesh-wide - a lab has no business touching
+# platform-istio's or any other namespace's mTLS posture.
+#
+# Test with a non-meshed client (no sidecar - fortio's own sidecar would
+# transparently upgrade to mTLS regardless of what we ask it to do, so it
+# can't test plaintext at all):
+#   kubectl run plaintext-test --image=curlimages/curl --rm -it \
+#     --restart=Never -n lab-demo -- \
+#     curl -v http://helloworld.lab-demo.svc.cluster.local:5000/hello
+#   -> expect success, plaintext accepted
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: lab-demo
+spec:
+  mtls:
+    mode: PERMISSIVE
