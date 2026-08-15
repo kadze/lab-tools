@@ -1,14 +1,16 @@
-# Exercise 3, step 1 of 2: 5s delay, injected on 100% of matched requests -
-# but only requests carrying the x-fault-test header are matched at all.
-# Unmatched (normal) traffic falls through to the second http entry and is
-# completely unaffected. This mirrors Istio's own bookinfo tutorial
-# pattern: fault injection scoped to a specific test signal, not a blanket
-# break-everything change - the whole point is proving you can validate
-# failure handling without degrading real traffic.
+# Exercise 3, step 2 of 2: 500 abort on 50% of matched requests. Step 1
+# (5s delay, 100% of matched requests) confirmed with a direct timed test:
+# normal request 0.783s, headered request 5.670s - matches the configured
+# delay almost exactly.
 #
-# Test with:
-#   fortio curl -H "x-fault-test: true" ... -> ~5s response
-#   fortio curl ...                          -> normal, fast response
+# 50%, not 100%, deliberately - proves the percentage knob itself works:
+# repeated headered requests should show a real, visible mix of 200s and
+# 500s, not an all-or-nothing switch. Unmatched (normal) traffic still
+# falls through to the second http entry, completely unaffected.
+#
+# Test with (repeat several times - each is independently ~50/50):
+#   fortio curl -H "x-fault-test: true" ... -> ~50% chance of HTTP 500
+#   fortio curl ...                          -> always 200, unaffected
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -23,10 +25,10 @@ spec:
             x-fault-test:
               exact: "true"
       fault:
-        delay:
+        abort:
           percentage:
-            value: 100
-          fixedDelay: 5s
+            value: 50
+          httpStatus: 500
       route:
         - destination:
             host: helloworld.lab-demo.svc.cluster.local
