@@ -11,6 +11,47 @@ metadata:
   namespace: lab-demo
 spec:
   host: helloworld.lab-demo.svc.cluster.local
+  # Exercise 5: circuit breaking via outlier detection. Deliberately NOT
+  # using fault injection to trigger this - exercise 4 confirmed twice
+  # (timeout, then retries) that a fault-injected response is synthesized
+  # by the HTTP Fault filter before the request ever reaches the Router
+  # filter, so anything that observes real upstream call outcomes -
+  # timeout, retries, and outlier detection all live in the Router filter
+  # or downstream of it - never sees it happen. A circuit breaker built on
+  # fault injection would hit the identical dead end a third time.
+  #
+  # Real mechanism instead: connectionPool set deliberately tiny
+  # (maxConnections: 1, http1MaxPendingRequests: 1) so real concurrent load
+  # (fortio -c 10+) genuinely overflows it, producing real 503s from
+  # Envoy's own pool-overflow handling - not synthesized. outlierDetection
+  # then watches for consecutive 5xx on each endpoint and ejects it from
+  # the load-balancing pool for baseEjectionTime once it crosses the
+  # threshold. This is Istio's own canonical circuit-breaking pattern, not
+  # improvised.
+  #
+  # Confirmed: connectionPool is real. 50 concurrent requests (fortio -c 50)
+  # produced 55.1% genuine connection-level failures (fortio code -1, not a
+  # synthesized response) - the tiny maxConnections limit is actually being
+  # enforced under real load.
+  #
+  # Not yet confirmed: outlierDetection actually ejecting an endpoint.
+  # First check was against a stale cluster state - this trafficPolicy had
+  # only been applied via a direct kubectl patch (never committed here),
+  # and Flux's routine reconcile reverted it before the check ran, same
+  # class of thing explained to the user earlier about Kiali UI edits.
+  # Re-verify once this commit is live.
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 1
+      http:
+        http1MaxPendingRequests: 1
+        maxRequestsPerConnection: 1
+    outlierDetection:
+      consecutive5xxErrors: 1
+      interval: 1s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 100
   subsets:
     - name: v1
       labels:
