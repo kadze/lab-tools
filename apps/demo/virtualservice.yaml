@@ -1,21 +1,34 @@
-# Exercise 4, step 1 of 2: timeout below the injected delay. Back to the
-# 5s/100% delay fault from exercise 3 step 1 (confirmed then: normal
-# 0.783s, headered 5.670s) - now with an Istio-level timeout: 2s added.
+# Exercise 4, step 1 (recorded finding, not the working demo): tried a 2s
+# timeout against the 5s fault.delay from exercise 3, expecting Envoy to
+# cut the request off at 2s with a 504. It didn't - the headered request
+# still completed successfully at 5.756s.
 #
-# This is a different failure than before: previously the client (fortio)
-# had to wait out its own timeout, or wait the full 5s. Now Envoy itself
-# aborts the request at 2s with a 504, regardless of client patience -
-# same mechanism a real caller would rely on to fail fast against a slow
-# dependency rather than hang indefinitely.
+# Confirmed via Envoy's own route config (fortio's sidecar, :15000/config_dump),
+# not guessed: both `"timeout": "2s"` and the 5s fault delay were genuinely
+# present and correctly configured. The reason is filter ordering, not
+# misconfiguration: Envoy's HTTP Fault filter runs BEFORE the Router filter
+# in the chain, and fault.delay is injected there - the route `timeout`
+# only starts counting once the Router filter begins forwarding upstream,
+# which happens *after* the fault delay already completed. By the time the
+# timeout clock starts, the real upstream call is fast (~100ms), so the 2s
+# limit never sees anything to catch. Total time = 5s delay + ~100ms real
+# response + overhead, not 2s.
 #
-# timeout applies to BOTH routes deliberately - a real timeout policy
-# protects every call to a dependency, not just the ones under test. It
-# has no effect on the normal (unmatched) route since nothing there is
-# ever slow enough to trigger it.
+# Real lesson: a route timeout does not bound a fault-injected (or any
+# proxy-side) delay that happens ahead of the Router filter - it only
+# bounds the upstream call itself. This is a genuine, documented Envoy
+# behavior, not something to work around here.
 #
-# Test with:
-#   fortio curl -H "x-fault-test: true" ... -> 504 at ~2s, not ~5s
-#   fortio curl ...                          -> normal, fast response
+# Exercise 4, step 2 of 2: retries against the abort fault instead - that
+# doesn't have this problem, since an abort is an instant response, not a
+# delay competing with the timeout clock. attempts: 3 means up to 4 total
+# tries (1 initial + 3 retries); against a 50% abort, all 4 failing
+# independently is 0.5^4 = 6.25%, so success rate should jump from ~50% to
+# ~94%.
+#
+# Test with (repeat several times):
+#   fortio curl -H "x-fault-test: true" ... -> ~94% success now, not ~50%
+#   fortio curl ...                          -> always 200, unaffected
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -30,17 +43,19 @@ spec:
             x-fault-test:
               exact: "true"
       fault:
-        delay:
+        abort:
           percentage:
-            value: 100
-          fixedDelay: 5s
-      timeout: 2s
+            value: 50
+          httpStatus: 500
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx
       route:
         - destination:
             host: helloworld.lab-demo.svc.cluster.local
             subset: v2
-    - timeout: 2s
-      route:
+    - route:
         - destination:
             host: helloworld.lab-demo.svc.cluster.local
             subset: v2
