@@ -1,16 +1,21 @@
-# Exercise 3, step 2 of 2: 500 abort on 50% of matched requests. Step 1
-# (5s delay, 100% of matched requests) confirmed with a direct timed test:
-# normal request 0.783s, headered request 5.670s - matches the configured
-# delay almost exactly.
+# Exercise 4, step 1 of 2: timeout below the injected delay. Back to the
+# 5s/100% delay fault from exercise 3 step 1 (confirmed then: normal
+# 0.783s, headered 5.670s) - now with an Istio-level timeout: 2s added.
 #
-# 50%, not 100%, deliberately - proves the percentage knob itself works:
-# repeated headered requests should show a real, visible mix of 200s and
-# 500s, not an all-or-nothing switch. Unmatched (normal) traffic still
-# falls through to the second http entry, completely unaffected.
+# This is a different failure than before: previously the client (fortio)
+# had to wait out its own timeout, or wait the full 5s. Now Envoy itself
+# aborts the request at 2s with a 504, regardless of client patience -
+# same mechanism a real caller would rely on to fail fast against a slow
+# dependency rather than hang indefinitely.
 #
-# Test with (repeat several times - each is independently ~50/50):
-#   fortio curl -H "x-fault-test: true" ... -> ~50% chance of HTTP 500
-#   fortio curl ...                          -> always 200, unaffected
+# timeout applies to BOTH routes deliberately - a real timeout policy
+# protects every call to a dependency, not just the ones under test. It
+# has no effect on the normal (unmatched) route since nothing there is
+# ever slow enough to trigger it.
+#
+# Test with:
+#   fortio curl -H "x-fault-test: true" ... -> 504 at ~2s, not ~5s
+#   fortio curl ...                          -> normal, fast response
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -25,15 +30,17 @@ spec:
             x-fault-test:
               exact: "true"
       fault:
-        abort:
+        delay:
           percentage:
-            value: 50
-          httpStatus: 500
+            value: 100
+          fixedDelay: 5s
+      timeout: 2s
       route:
         - destination:
             host: helloworld.lab-demo.svc.cluster.local
             subset: v2
-    - route:
+    - timeout: 2s
+      route:
         - destination:
             host: helloworld.lab-demo.svc.cluster.local
             subset: v2
